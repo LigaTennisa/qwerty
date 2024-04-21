@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Найти партнера</title>
+	<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,600,600italic,700,700italic|Playfair+Display:400,700&subset=latin,cyrillic">
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.4.0/css/font-awesome.css">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons"rel="stylesheet">
+	<link rel="stylesheet" href="{% static 'css/find_partner.css'%}" type="text/css">
+	<script src="{% static 'js/app.js' %}" defer></script>	
+	<!-- для мобильной версии сайта -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+  	<script src="https://cdnjs.cloudflare.com/ajax/libs/prefixfree/1.0.7/prefixfree.min.js"></script>
+</head>
+
+
+<body>
+  <div>
+  <div class = "choose">
+    <select id="court-filter"> 
+        <option selected disabled>Выбрать корт</option>
+        <option value="all">Все корты</option>
+        <option value="ЛИДЕР">ЛИДЕР (Суходольский м-н, Восточный округ, Тюмень)</option>
+        <option value="Sofi-land">Sofi-land (Лесобазовская 8а/1 Тура м-н, Ленинский округ, Тюмень)</option>
+    </select>
+
+    <div id="selected-court"></div>
+
+    {% comment %} <label for="date-filter">Выбрать дату:</label> {% endcomment %}
+    <input type="date" id="date-filter">
+
+    <div id="selected-date"></div>
+
+    <a href="{% url 'add_post' %}"><button id = "create">Создать объявление</button></a>
+  </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var cards = document.querySelectorAll('.otherforms');
+
+    cards.forEach(function(card) {
+        card.classList.remove('hidden');
+    });
+
+    function filterCards() {
+      var selectedCourt = document.getElementById('court-filter').value;
+      var selectedDate = document.getElementById('date-filter').value;
+
+      cards.forEach(function(card) {
+          var showCard = true;
+
+          if (selectedCourt !== 'all' && !card.classList.contains('court-' + selectedCourt)) {
+              showCard = false;
+          }
+
+          if (selectedDate && card.querySelector('p[data-date]').textContent !== selectedDate) {
+              showCard = false;
+          }
+
+          if (showCard) {
+              card.classList.remove('hidden');
+          } else {
+              card.classList.add('hidden');
+          }
+      });
+
+      
+  }
+
+  document.getElementById('court-filter').addEventListener('change', filterCards);
+  document.getElementById('date-filter').addEventListener('input', filterCards);
+
+});
+</script>
+
+    
+    <div class="card-container">
+      <div>
+        <div class="nearest-game">
+          <h2>Ближайшая игра для вас</h2>
+          <div class="otherforms hidden">
+            <p class="time">22 апреля 2024, 15:00</p>
+            <p>Корт: ЛИДЕР</p>
+            <p>Пожелания: Нет</p>
+            <button class="submit">Откликнуться</button>
+            <div class = "user">
+            <button><img src ="{% static 'img/user.findpartner.png' %}"><p><a href= "user_profile">Василий<br/> Петров</a></p></button>
+            </div>
+          </div>
+      </div>
+      <br>
+      <h2>Все формы</h2>
+        {% for post in posts %}
+        
+        <div class="otherforms {% if post.court == 'ЛИДЕР' %} court-ЛИДЕР {% elif post.court == 'Sofi-land' %} court-Sofi-land {% endif %} hidden">
+            <p class = "time">{{ post.training_date }}, {{ post.training_time }}</p>  
+            <p>Корт: {{ post.court }}</p>    
+            <p>Пожелания: {{ post.preferences }}</p>           
+            {% comment %} <p class = "published"> от {{ post.published_at | date:"M d, Y" }}</p> {% endcomment %}
+            {% if request.user.is_authenticated %}
+              {% if request.user == post.author %}
+                {% comment %} <p class="my">Мой пост</p> {% endcomment %}
+              {% else %}
+                <div class="people">
+                  {% if request.user in post.responders.all %}
+                    <form method="post" action="{% url 'cancel_respondery' post.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="responder_id" value="{{ request.user.id }}">
+                      <button class="submit">Отменить отклик</button>
+                    </form>
+                  {% else %}
+                    <form id="respond-form" method="post" action="{% url 'respond_to_post' post.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="responder_id" value="{{ request.user.id }}">
+                      <button id="respond-button" class="submit">Откликнуться</button>
+                    </form>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endif %}
+            <div class = "user">
+              
+              {% if request.user.is_authenticated %}
+                {% if request.user == post.author %}
+                  <button><img src ="{% static 'img/user.findpartner.png' %}"><p><a href="{% url 'myposts' %}">{{ post.author.first_name }}<br/> {{ post.author.last_name }}</a></p></button>
+                {% else %}
+                  <button><img src ="{% static 'img/user.findpartner.png' %}"><p><a href="{% url 'user_profile' post.author.id %}">{{ post.author.first_name }}<br/> {{ post.author.last_name }}</a></p></button>
+                {% endif %}
+              {% else %}
+                <p>{{ post.author.first_name }} {{ post.author.last_name }}</p>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    
+  </div>
+  
+
+  <!-- Блок для отображения формы отклика -->
+  <div id="response-form-container"></div>
+
+  <!-- JavaScript для динамического добавления формы -->
+  <script>
+    document.getElementById('respond-button').addEventListener('click', function() {
+      var responseForm = document.getElementById('respond-form').cloneNode(true);
+      document.getElementById('response-form-container').appendChild(responseForm);
+    });
+  </script>
+
+</body>
+{% endblock content %} 
